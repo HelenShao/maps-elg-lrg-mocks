@@ -74,11 +74,16 @@ WINDOW = FLARE / 'elg_catalog_base' / 'step0_mass_window.npz'
 SIDE_CEN = CATS / 'elgbase_sidecar_w11p3_12p0_nall.npz'
 SIDE_SAT = CATS / 'elgbase_sidecar_w11p3_12p0_sat.npz'
 
-DESI = Path('/home/helenshao/InitialConditions/aurora_maplogs/DESI_data')
+#: the DESI reference measurements, SHIPPED WITH THIS REPOSITORY so that
+#: nothing is read out of a personal home directory. Rocher+2023 Fig. 3
+#: (DESI One-Percent Survey ELGs, 0.8 < z < 1.6); the scoring uses the
+#: pip+angup columns. Resolved relative to this file, so it works from any
+#: working directory.
+DESI = Path(__file__).resolve().parent / 'desi'
 DESI_TAB = {
-    'wp': DESI / 'rocher_fig_weights_out/desi_elg_rpwp_rocher_zenodo.txt',
-    'xi0': DESI / 'rocher_fig_weights_out/desi_elg_sxi0_rocher_zenodo.txt',
-    'xi2': DESI / 'rocher_fig_weights_out/desi_elg_sxi2_rocher_zenodo.txt',
+    'wp': DESI / 'desi_elg_rpwp_rocher_zenodo.txt',
+    'xi0': DESI / 'desi_elg_sxi0_rocher_zenodo.txt',
+    'xi2': DESI / 'desi_elg_sxi2_rocher_zenodo.txt',
 }
 
 #: the ELG mass window, in MAP mass. NEVER cut inside this -- see the

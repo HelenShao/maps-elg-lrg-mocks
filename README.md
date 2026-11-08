@@ -5,10 +5,7 @@ matched to CompaSO halos and tuned against DESI clustering — Rocher+2023
 (ELG One-Percent) for the ELGs, Favole+2025 (Y1 LRG3 and ELG1×LRG3) for the
 LRGs.
 
-> These scripts read data products that live on Aurora's Flare filesystem.
-> The paths are hard-coded. Off that filesystem the scripts will raise
-> `FileNotFoundError` at the first `np.load`; the recipes are still readable,
-> but nothing will run without those files.
+> These scripts read data located inside Aurora flare!
 
 ## The files
 
@@ -27,51 +24,35 @@ python catalogs/elg_owncen6500.py                  # measure only
 python catalogs/elg_owncen6500.py --write new.npz  # also write; never overwrites
 ```
 
-Every script refuses to overwrite an existing output file.
-
 ## The rules
 
-χ² is **per point** against DESI, with the multipoles taken over *s* < 2.
-These are not fit statistics — they are how catalogues are ranked here.
+χ² is computed against DESI Y1 datapoints (taken from Rocher+22), with the multipoles taken over *s* < 2.
 
 ### `elg_plain_ramcut.py` — the baseline  ·  w_p 13.45 · ξ₀ 60.93 · ξ₂ 17.82
 
-Centrals thinned uniformly; the satellite slots filled by the lowest
-integrated ram pressure, on the reading that a satellite stripped of its gas
-stops forming stars and stops being an ELG.
+First, centrals are thinned uniformly to reach some baseline subsample with ndensity below target abundance
+next, the satellites are filled by the lowest **integrated ram pressre** ($\rho v_{rel}^2$) since a satellite 
+that is stripped of its gas stops forming stars and stops being an ELG.
 
-Its inner `w_p` is the obvious failure — r_p·w_p = 19.3 against DESI's 55.3
-at r_p = 0.058 — and chasing that deficit is what produced every other rule
-here.
+This baseline catalog does not capture the ELG-ELG conformity that is needed to recover large small scale power
+The inner integrated corr func, `w_p`, is too low: r_p·w_p = 19.3 vs. DESI's 55.3
+at r_p = 0.058 — and recovering that deficit is in the other catalogs procedures.
 
 ### `elg_owncen6500.py` — the own-central reserve  ·  w_p 1.80 · ξ₀ 36.87 · ξ₂ 3.08
 
 Centrals thinned uniformly, no density boost. Then `n_protect = 6500`
-satellites whose **own** central survived the thinning are reserved, deepest
+satellites whose **own** ELG central survived the thinning are reserved (conformity), deepest
 inside the host first; the remaining slots go to the lowest `ram_int`.
 
-Why it is needed: thinning centrals 20:1 leaves only 1.287% of satellites
-with their own central, down from 26.163% unthinned. A plain `ram_int` cut
-then keeps 3.54% of satellites, discarding ~96% of even those — so the
-one-halo pairs that carry `w_p` below r_p = 0.2 are gone before `ram_int` is
-consulted at all.
+Note that previous `ram_int` cut discarded ~96% of satellites so the
+one-halo pairs that carry `w_p` below r_p = 0.2 are destroyed
 
-**Honest status.** 6,500 is a **fitted** number, scanned from 2,000 to 54,577
+**caveat** 6,500 is a **fitted** number, scanned from 2,000 to 54,577
 against χ² inside r_p = 0.2. Ordering the reserve by smallest `r/R_host` has
-no published support on its own: Hadzhiyska+2022 find ELG satellites prefer
-the *outskirts*. It remains the best `w_p` here.
+no physical motivation: Hadzhiyska+2022 find ELG satellites prefer
+the *outskirts*.
 
 ### `elg_best_l45.py` — the two-stage conformity rebuild
-
-The only script here that rebuilds an **existing** catalogue rather than
-defining a rule, because that catalogue's stored recipe describes its *base*
-and so cannot document itself. It reproduces it exactly:
-
-```
-VERIFY  N 967,498 vs 967,498 | cen 914,922 vs 914,922
-        sat 52,576 vs 52,576 | identical MAP id set: True
-```
-
 ~15 minutes.
 
 **Stage 1** — centrals: rank `dmult` as a percentile *within 0.05-dex logM
@@ -107,15 +88,10 @@ With `elg_best_l45` it appends 8,390 centrals and improves the LRG:
 | LRG auto `w_p` χ² | 3.61 | **0.93** |
 | ELG×LRG cross χ² | 18.46 | **15.06** |
 
-It is **destructive for other ELG catalogues**, which have far more ELG
-satellites sitting around non-ELG centrals: appending 83,792 or 117,181
-centrals instead drives the LRG auto `w_p` χ² to 81 and 97. Check how many
-centrals it appends before trusting the result.
-
 `--all-centrals` appends every non-ELG window central instead, which adds
 ~11.2M objects; it is off by default.
 
-## Data products these scripts read
+## Data files
 
 All under `/lus/flare/projects/Abacus/helenshao/elg_catalog_runs/`:
 
@@ -127,16 +103,7 @@ All under `/lus/flare/projects/Abacus/helenshao/elg_catalog_runs/`:
 | `elg_all_r95_AuroraHighBase_dje/catalogs/allmaps_compaso_primaries.npz` | the halo primaries — **the whole box**, 47,654,600 rows spanning logM 10.63–13.81, not just the window |
 | `.../catalogs/lrg_widened/lrg_widened_lowdmult_n3p4e4.npz` | the base LRG |
 
-Building the first three is **stage 0**: batch jobs on a compute node, hours,
-not notebook cells. They already exist; these scripts start from them.
-`elgmaps_core.ball_match` is the real matching algorithm written out so it can
-be read, and `demo_ball_match()` runs it on random data.
-
-Memory: `load_parent_window()` holds the 16.3M-row window plus the sidecar
-joins — budget roughly **8–12 GB**. Pass `with_sidecar=False` for everything
-except the selection rules themselves.
-
-## Where the halos came from
+## Halo catalog
 
 | | |
 |---|---|
@@ -146,10 +113,8 @@ except the selection rules themselves.
 | method | `ball` matching, overlap resolved `most_massive` |
 | counts | 48,043,269 halos, 47,654,600 primaries; 74,809,159 of 121,386,086 MAPs matched (61.6%) |
 
-`r100_L2com` is only the matching script's argparse default — the run used
-`r95_L2com`, which is what the run tag `elg_all_r95_*` records. Note that
-`r_over_R` in the matched file is nonetheless divided by `r100_L2com`, chosen
-deliberately so that `r/R` stays comparable across the r95 and r100 matches.
+Runs use `r95_L2com`. But `r_over_R` in the matched file is  divided by `r100_L2com`, 
+so that `r/R` stays comparable across the r95 and previous r100 matches.
 
 The MAPs come from a maplog re-run of the *same* initial conditions
 (`HighBase_map_nosort`). Same phase `ph100`, same cosmology — that is what
